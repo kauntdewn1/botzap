@@ -87,5 +87,13 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs"
+  "type": "commonjs",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kauntdewn1/botzap.git"
+  },
+  "bugs": {
+    "url": "https://github.com/kauntdewn1/botzap/issues"
+  },
+  "homepage": "https://github.com/kauntdewn1/botzap#readme"
 }
