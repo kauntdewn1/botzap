@@ -60,7 +60,7 @@ app.post("/webhook", async (req, res) => {
       const aviso = qs.stringify({
         token: TOKEN,
         to: data.from, // Manda pro grupo, não pro bot
-        body: `🚨 Regras do grupo:\n\n🚫 Links proibidos\n✅ Respeite os membros\n⚠️ Reincidência = ban\n\nEssa foi só um aviso.`
+        body: `🚨 Regras do grupo:\n\n🚫 Para enviar links consulte um admin\n✅ Respeite os membros\n⚠️ Reincidência = ban\n\nEssa foi só um aviso.`
       });
   
       const options = {
