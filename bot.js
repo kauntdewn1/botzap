@@ -42,24 +42,24 @@ app.post("/webhook", async (req, res) => {
   if (regex.test(msg)) {
     console.log("🛑 Link detectado:", msg);
   
-    // DELETA A MENSAGEM
+    // Apagar a mensagem original
     try {
       await axios.get(`https://api.ultramsg.com/${INSTANCE}/messages/delete`, {
         params: {
           token: TOKEN,
-          id: data.id // ID da mensagem que chegou
+          id: data.id // ID da mensagem recebida
         }
       });
-      console.log("🧹 Mensagem deletada com sucesso:", data.id);
+      console.log("🧹 Mensagem deletada:", data.id);
     } catch (err) {
-      console.error("❌ Erro ao deletar mensagem:", err.response?.data || err.message);
+      console.error("❌ Erro ao deletar:", err.response?.data || err.message);
     }
   
-    // ENVIA AVISO
+    // Mandar aviso no grupo
     try {
       const aviso = qs.stringify({
         token: TOKEN,
-        to: grupo,
+        to: data.from, // Manda pro grupo, não pro bot
         body: `🚨 Regras do grupo:\n\n🚫 Links proibidos\n✅ Respeite os membros\n⚠️ Reincidência = ban\n\nEssa foi só um aviso.`
       });
   
@@ -72,6 +72,22 @@ app.post("/webhook", async (req, res) => {
           "Content-Length": aviso.length
         }
       };
+  
+      const reqSend = http.request(options, res => {
+        let data = "";
+        res.on("data", chunk => data += chunk);
+        res.on("end", () => console.log("📤 Aviso enviado no grupo:", data));
+      });
+  
+      reqSend.write(aviso);
+      reqSend.end();
+    } catch (err) {
+      console.error("❌ Erro ao enviar aviso:", err.message);
+    }
+  
+    return res.sendStatus(200);
+  }
+  
   
       const reqSend = http.request(options, res => {
         let data = "";
