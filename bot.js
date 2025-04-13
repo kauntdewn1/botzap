@@ -55,38 +55,67 @@ app.post("/webhook", async (req, res) => {
       console.error("❌ Erro ao deletar:", err.response?.data || err.message);
     }
   
-    // Mandar aviso no grupo
-    try {
-      const aviso = qs.stringify({
-        token: TOKEN,
-        to: data.from, // Manda pro grupo, não pro bot
-        body: `🚨 Regras do grupo:\n\n🚫 Para enviar links consulte um admin\n✅ Respeite os membros\n⚠️ Reincidência = ban\n\nEssa foi só um aviso.`
-      });
-  
-      const options = {
-        method: "POST",
-        hostname: "api.ultramsg.com",
-        path: `/${INSTANCE}/messages/chat`,
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-          "Content-Length": aviso.length
-        }
-      };
-  
-      const reqSend = http.request(options, res => {
-        let data = "";
-        res.on("data", chunk => data += chunk);
-        res.on("end", () => console.log("📤 Aviso enviado no grupo:", data));
-      });
-  
-      reqSend.write(aviso);
-      reqSend.end();
-    } catch (err) {
-      console.error("❌ Erro ao enviar aviso:", err.message);
+    // AVISO IMEDIATO
+try {
+  const avisoInstantaneo = qs.stringify({
+    token: TOKEN,
+    to: data.from,
+    body: `👀 Opa... _detectei um link aqui._\n🚫 Links são proibidos. Quer divulgar algo? Nos chame no particular antes :)\n\n❗ Apaga por favor, foi uma advertência pois links relevantes serão autorizados sim. Fale com um @admin.`
+  });
+
+  const options1 = {
+    method: "POST",
+    hostname: "api.ultramsg.com",
+    path: `/${INSTANCE}/messages/chat`,
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      "Content-Length": avisoInstantaneo.length
     }
-  
-    return res.sendStatus(200);
+  };
+
+  const req1 = http.request(options1, res => {
+    let data = "";
+    res.on("data", chunk => data += chunk);
+    res.on("end", () => console.log("📤 Aviso imediato enviado:", data));
+  });
+
+  req1.write(avisoInstantaneo);
+  req1.end();
+} catch (err) {
+  console.error("❌ Erro ao enviar aviso imediato:", err.message);
+}
+
+// AGENDAR AVISO CORPORATIVO APÓS 1 MINUTO
+setTimeout(() => {
+  try {
+    const avisoCorporativo = qs.stringify({
+      token: TOKEN,
+      to: data.from,
+      body: `📢 Aviso automático:\n\n🔗 Links não são permitidos sem consulta prévia.\n👥 Respeite os membros e as diretrizes do grupo.\n🚨 Reincidência pode resultar em expulsão.\n\nObrigado por colaborar com a organização deste espaço.`
+    });
+
+    const options2 = {
+      method: "POST",
+      hostname: "api.ultramsg.com",
+      path: `/${INSTANCE}/messages/chat`,
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Content-Length": avisoCorporativo.length
+      }
+    };
+
+    const req2 = http.request(options2, res => {
+      let data = "";
+      res.on("data", chunk => data += chunk);
+      res.on("end", () => console.log("📤 Aviso corporativo enviado:", data));
+    });
+
+    req2.write(avisoCorporativo);
+    req2.end();
+  } catch (err) {
+    console.error("❌ Erro ao enviar aviso corporativo:", err.message);
   }
+}, 60000); // 60 segundos
   
   
     try {
@@ -104,6 +133,7 @@ app.post("/webhook", async (req, res) => {
   console.log("✅ Mensagem limpa:", msg);
 
   res.sendStatus(200);
+  }
 });
 
 app.listen(3000, "0.0.0.0", () => {
