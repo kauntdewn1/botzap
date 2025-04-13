@@ -89,27 +89,6 @@ app.post("/webhook", async (req, res) => {
   }
   
   
-      const reqSend = http.request(options, res => {
-        let data = "";
-        res.on("data", chunk => data += chunk);
-        res.on("end", () => console.log("📤 Aviso enviado:", data));
-      });
-  
-      reqSend.write(aviso);
-      reqSend.end();
-    } catch (err) {
-      console.error("❌ Erro ao enviar aviso:", err.message);
-    }
-  
-    return res.sendStatus(200);
-    const reqSend = http.request(options, res => {
-      let data = "";
-      res.on("data", chunk => data += chunk);
-      res.on("end", () => console.log("📤 Aviso enviado:", data));
-    });
-    reqSend.write(aviso);
-    reqSend.end();
-  
     try {
       const resKick = await axios.get(`https://api.ultramsg.com/${INSTANCE}/groups/leave`, {
         params: {
@@ -122,9 +101,7 @@ app.post("/webhook", async (req, res) => {
     } catch (err) {
       console.error("❌ Erro ao chutar:", err.response?.data || err.message);
     }
-  } else {
-    console.log("✅ Mensagem limpa:", msg);
-  }
+  console.log("✅ Mensagem limpa:", msg);
 
   res.sendStatus(200);
 });
