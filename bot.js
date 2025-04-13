@@ -86,8 +86,6 @@ app.post("/webhook", async (req, res) => {
     }
   
     return res.sendStatus(200);
-  }  
-
     const reqSend = http.request(options, res => {
       let data = "";
       res.on("data", chunk => data += chunk);
@@ -95,7 +93,7 @@ app.post("/webhook", async (req, res) => {
     });
     reqSend.write(aviso);
     reqSend.end();
-
+  
     try {
       const resKick = await axios.get(`https://api.ultramsg.com/${INSTANCE}/groups/leave`, {
         params: {
