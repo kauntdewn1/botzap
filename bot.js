@@ -3,6 +3,11 @@ const bodyParser = require("body-parser");
 const axios = require("axios");
 const qs = require("querystring");
 const http = require("https");
+const reincidentes = {};
+const nomesDosGrupos = {
+  "HacDHmPKghjJfiWUo2vw9u@g.us": "News do MKT",
+  "COf6qGHjn27Ca9XyN3Mfh9@g.us": "Digital Flow Network"
+};
 require("dotenv").config();
 
 const app = express();
@@ -24,6 +29,10 @@ app.post("/webhook", async (req, res) => {
   const msg = data.body.toLowerCase();
   const grupo = data.to;
   const autor = data.from;
+  console.log("🚨 INFRAÇÃO DE REGRA DETECTADA");
+  console.log("👤 Autor:", data.author);
+  console.log("📎 Link:", msg);
+
 
   const excecoes = [
     "5562983231110@c.us", // <- TEU NÚMERO
@@ -41,7 +50,12 @@ app.post("/webhook", async (req, res) => {
 
   if (regex.test(msg)) {
     console.log("🛑 Link detectado:", msg);
-  
+    // Atualiza contador
+    reincidentes[data.author] = (reincidentes[data.author] || 0) + 1;
+    const strikes = reincidentes[data.author];
+
+    console.log(`⚠️ Strike ${strikes} registrado para ${data.author}`);
+
     // Apagar a mensagem original
     try {
       await axios.get(`https://api.ultramsg.com/${INSTANCE}/messages/delete`, {
@@ -60,8 +74,45 @@ try {
   const avisoInstantaneo = qs.stringify({
     token: TOKEN,
     to: data.from,
-    body: `👀 Opa... _detectei um link aqui._\n🚫 Links são proibidos. Quer divulgar algo? Nos chame no particular antes :)\n\n❗ Apaga por favor, foi uma advertência pois links relevantes serão autorizados sim. Fale com um @admin.`
+    body: `@${nomeDoCorno} 👀 Opa... detectei um link aqui.\nStrike: ${strikes}\n...\n\nApaga por favor. Quando chegar em 3, o grupo decide tua vida.`
   });
+// STRIKES
+reincidentes[data.author] = (reincidentes[data.author] || 0) + 1;
+const strikes = reincidentes[data.author];
+
+// INFO
+const grupoNome = nomesDosGrupos[data.from] || "um dos grupos da comunidade";
+const numero = data.author.replace("@c.us", "");
+
+// AVISO PRIVADO
+try {
+  const msgPrivada = qs.stringify({
+    token: TOKEN,
+    to: data.author,
+    body: `👀 Opa ${numero}...\nDetectei um link seu no grupo *${grupoNome}*.\n\nStrike: ${strikes}\n🚫 Links são proibidos sem autorização.\n\nPor favor, apaga.\nCom 3 strikes a moderação toma providências.`
+  });
+
+  const options = {
+    method: "POST",
+    hostname: "api.ultramsg.com",
+    path: `/${INSTANCE}/messages/chat`,
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      "Content-Length": msgPrivada.length
+    }
+  };
+
+  const req = http.request(options, res => {
+    let data = "";
+    res.on("data", chunk => data += chunk);
+    res.on("end", () => console.log("📤 Aviso PRIVADO enviado:", data));
+  });
+
+  req.write(msgPrivada);
+  req.end();
+} catch (err) {
+  console.error("❌ Erro ao mandar no privado:", err.message);
+}
 
   const options1 = {
     method: "POST",
@@ -117,19 +168,6 @@ setTimeout(() => {
   }
 }, 60000); // 60 segundos
   
-  
-    try {
-      const resKick = await axios.get(`https://api.ultramsg.com/${INSTANCE}/groups/leave`, {
-        params: {
-          token: TOKEN,
-          groupId: grupo,
-          participant: autor
-        }
-      });
-      console.log("👢 CHUTEI o corno do grupo:", autor);
-    } catch (err) {
-      console.error("❌ Erro ao chutar:", err.response?.data || err.message);
-    }
   console.log("✅ Mensagem limpa:", msg);
 
   res.sendStatus(200);
