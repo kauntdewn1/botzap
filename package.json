@@ -19,6 +19,7 @@
     "debug": "^4.4.0",
     "delayed-stream": "^1.0.0",
     "depd": "^2.0.0",
+    "dotenv": "^16.5.0",
     "dunder-proto": "^1.0.1",
     "ee-first": "^1.1.1",
     "encodeurl": "^2.0.0",
@@ -80,7 +81,6 @@
     "vary": "^1.1.2",
     "wrappy": "^1.0.2"
   },
-  "devDependencies": {},
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
