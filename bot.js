@@ -25,26 +25,68 @@ app.post("/webhook", async (req, res) => {
   const grupo = data.to;
   const autor = data.from;
 
+  const excecoes = [
+    "5562983231110@c.us", // <- TEU NÚMERO
+    "5564992660522@c.us", // <- OUTRO ADM, SE TIVER
+    "5562996604044@c.us",
+  ];
+
+  if (excecoes.includes(autor)) {
+    console.log("👑 É um dos brabos, não expulsa:", autor);
+    return res.sendStatus(200); // ignora a mensagem
+  }
+
+
   const regex = /(http|www\.|\.com|\.net|\.org|bit\.ly|wa\.me|t\.me)/i;
 
   if (regex.test(msg)) {
     console.log("🛑 Link detectado:", msg);
-
-    const aviso = qs.stringify({
-      token: TOKEN,
-      to: autor,
-      body: "🚨 Você foi removido por compartilhar link proibido."
-    });
-
-    const options = {
-      method: "POST",
-      hostname: "api.ultramsg.com",
-      path: `/${INSTANCE}/messages/chat`,
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        "Content-Length": aviso.length
-      }
-    };
+  
+    // DELETA A MENSAGEM
+    try {
+      await axios.get(`https://api.ultramsg.com/${INSTANCE}/messages/delete`, {
+        params: {
+          token: TOKEN,
+          id: data.id // ID da mensagem que chegou
+        }
+      });
+      console.log("🧹 Mensagem deletada com sucesso:", data.id);
+    } catch (err) {
+      console.error("❌ Erro ao deletar mensagem:", err.response?.data || err.message);
+    }
+  
+    // ENVIA AVISO
+    try {
+      const aviso = qs.stringify({
+        token: TOKEN,
+        to: grupo,
+        body: `🚨 Regras do grupo:\n\n🚫 Links proibidos\n✅ Respeite os membros\n⚠️ Reincidência = ban\n\nEssa foi só um aviso.`
+      });
+  
+      const options = {
+        method: "POST",
+        hostname: "api.ultramsg.com",
+        path: `/${INSTANCE}/messages/chat`,
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          "Content-Length": aviso.length
+        }
+      };
+  
+      const reqSend = http.request(options, res => {
+        let data = "";
+        res.on("data", chunk => data += chunk);
+        res.on("end", () => console.log("📤 Aviso enviado:", data));
+      });
+  
+      reqSend.write(aviso);
+      reqSend.end();
+    } catch (err) {
+      console.error("❌ Erro ao enviar aviso:", err.message);
+    }
+  
+    return res.sendStatus(200);
+  }  
 
     const reqSend = http.request(options, res => {
       let data = "";
