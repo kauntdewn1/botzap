@@ -38,7 +38,7 @@ app.post("/webhook", async (req, res) => {
     const options = {
       method: "POST",
       hostname: "api.ultramsg.com",
-      path: `/${INSTANCE}/messages/chat`,
+      path: `/${INSTANCE}/messages/chat?token=${TOKEN}`,
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
         "Content-Length": boasVindas.length
@@ -154,15 +154,15 @@ try {
   console.error("❌ Erro ao mandar no privado:", err.message);
 }
 
-  const options1 = {
-    method: "POST",
-    hostname: "api.ultramsg.com",
-    path: `/${INSTANCE}/messages/chat`,
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-      "Content-Length": avisoInstantaneo.length
-    }
-  };
+const options1 = {
+  method: "POST",
+  hostname: "api.ultramsg.com",
+  path: `/${INSTANCE}/messages/chat?token=${TOKEN}`, // ✅ AGORA VAI, PORRA!
+  headers: {
+    "Content-Type": "application/x-www-form-urlencoded",
+    "Content-Length": avisoInstantaneo.length
+  }
+};
 
   const req1 = http.request(options1, res => {
     let data = "";
@@ -188,7 +188,7 @@ setTimeout(() => {
     const options2 = {
       method: "POST",
       hostname: "api.ultramsg.com",
-      path: `/${INSTANCE}/messages/chat`,
+      path: `/${INSTANCE}/messages/chat?token=${TOKEN}`,
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
         "Content-Length": avisoCorporativo.length
