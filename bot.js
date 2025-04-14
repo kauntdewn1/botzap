@@ -3,217 +3,293 @@ const bodyParser = require("body-parser");
 const axios = require("axios");
 const qs = require("querystring");
 const http = require("https");
-const reincidentes = {};
-const nomesDosGrupos = {
-  "HacDHmPKghjJfiWUo2vw9u@g.us": "News do MKT",
-  "COf6qGHjn27Ca9XyN3Mfh9@g.us": "Digital Flow Network"
-};
+const rateLimit = require("express-rate-limit");
+const yaml = require("yaml");
+const fs = require("fs");
+const Database = require("./db");
+const winston = require('winston');
 require("dotenv").config();
+
+// Carrega configurações
+const config = yaml.parse(fs.readFileSync("./config.yaml", "utf8"));
+
+// Configura logger
+const logger = winston.createLogger({
+  level: config.logging.level,
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.json()
+  ),
+  transports: [
+    new winston.transports.File({
+      filename: config.logging.file,
+      maxsize: config.logging.max_size,
+      maxFiles: config.logging.max_files
+    }),
+    new winston.transports.Console()
+  ]
+});
+
+// Inicializa banco de dados
+const db = new Database(config.database.path, config);
 
 const app = express();
 app.use(bodyParser.json());
 
 const TOKEN = process.env.TOKEN;
 const INSTANCE = process.env.INSTANCE;
+const PORT = process.env.PORT || 3000;
 
-app.get("/", (req, res) => {
-  res.status(200).send("Bot tá vivo e rodando, caralho!");
+// Configura rate limiting
+const limiter = rateLimit({
+  windowMs: config.rate_limit.window_ms,
+  max: config.rate_limit.max_requests,
+  message: "Too many requests, please try again later."
 });
-app.post("/webhook", async (req, res) => {
-  const data = req.body?.data;
+app.use(limiter);
 
-  if (!data) return res.sendStatus(200);
-
-  // Boas-vindas quando evento for de entrada
-  if (req.body.event_type === "message_create" && data.type === "chat" && data.fromMe === false && data.body === "") {
-    const novoMembro = data.author;
-    const grupo = data.from;
-
-    const boasVindas = qs.stringify({
-      token: TOKEN,
-      to: grupo,
-      body: `👋 Olá @${novoMembro.replace("@c.us", "")}! 👋 E aí, bem-vindx à FlowHUB!\n\nEu sou a Ariel, seu suporte aqui no grupo — e tô aqui pra te ajudar a tirar o máximo desse ecossistema digital 🌐\n\n👉 Conheça nosso portal: www.flowhub.space\n📥 Baixe os templates gratuitos e comece hoje mesmo\n\nGrupos da Comunidade FLOWHUB:\n🧠 *Flow Growth* → Crescimento, ferramentas e estratégias\n💬 *Digital Flow Network* → Networking, colaborações e negócios\n\nSe apresenta aí e conta o que você faz!\nTamo junto pra crescer. 🙌`
-    });
-
-    const options = {
-      method: "POST",
-      hostname: "api.ultramsg.com",
-      path: `/${INSTANCE}/messages/chat?token=${TOKEN}`,
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        "Content-Length": boasVindas.length
-      }
-    };
-
-    const reqWelcome = http.request(options, res => {
-      let data = "";
-      res.on("data", chunk => data += chunk);
-      res.on("end", () => console.log("🙌 Boas-vindas enviadas:", data));
-    });
-
-    reqWelcome.write(boasVindas);
-    reqWelcome.end();
-
-    return res.sendStatus(200);
-  }
-
-  // Resto do bot...
+// Error handling middleware
+app.use((err, req, res, next) => {
+  logger.error('Error:', err);
+  res.status(500).send('Something broke!');
 });
-  
-app.post("/webhook", async (req, res) => {
-  console.log("📩 Mensagem recebida:", JSON.stringify(req.body, null, 2));
 
-  const data = req.body?.data;
-  if (!data || !data.body) return res.sendStatus(200);
-
-  const msg = data.body.toLowerCase();
-  const grupo = data.to;
-  const autor = data.from;
-  console.log("🚨 INFRAÇÃO DE REGRA DETECTADA");
-  console.log("👤 Autor:", data.author);
-  console.log("📎 Link:", msg);
-
-
-  const excecoes = [
-    "5562983231110@c.us", // <- TEU NÚMERO
-    "5564992660522@c.us", // <- OUTRO ADM, SE TIVER
-    "5562996604044@c.us",
-  ];
-
-  if (excecoes.includes(autor)) {
-    console.log("👑 É um dos brabos, não expulsa:", autor);
-    return res.sendStatus(200); // ignora a mensagem
-  }
-
-
-  const regex = /(http|www\.|\.com|\.net|\.org|bit\.ly|wa\.me|t\.me)/i;
-
-  if (regex.test(msg)) {
-    console.log("🛑 Link detectado:", msg);
-    // Atualiza contador
-    reincidentes[data.author] = (reincidentes[data.author] || 0) + 1;
-    const strikes = reincidentes[data.author];
-
-    console.log(`⚠️ Strike ${strikes} registrado para ${data.author}`);
-
-    // Apagar a mensagem original
-    try {
-      await axios.get(`https://api.ultramsg.com/${INSTANCE}/messages/delete`, {
-        params: {
-          token: TOKEN,
-          id: data.id // ID da mensagem recebida
-        }
-      });
-      console.log("🧹 Mensagem deletada:", data.id);
-    } catch (err) {
-      console.error("❌ Erro ao deletar:", err.response?.data || err.message);
-    }
-  
-    // AVISO IMEDIATO
-try {
-  const avisoInstantaneo = qs.stringify({
+// Função para enviar mensagem
+async function sendMessage(to, body) {
+  const message = qs.stringify({
     token: TOKEN,
-    to: data.author,
-    body: `@${nomeDoCorno} 👀 Opa... detectei um link aqui.\nStrike: ${strikes}\n...\n\nApaga por favor. Quando chegar em 3, o grupo decide tua vida.`
-  });
-// STRIKES
-reincidentes[data.author] = (reincidentes[data.author] || 0) + 1;
-const strikes = reincidentes[data.author];
-
-// INFO
-const grupoNome = nomesDosGrupos[data.from] || "um dos grupos da comunidade";
-const numero = data.author.replace("@c.us", "");
-
-// AVISO PRIVADO
-try {
-  const msgPrivada = qs.stringify({
-    token: TOKEN,
-    to: data.author,
-    body: `👀 Opa ${numero}...\nDetectei um link seu no grupo *${grupoNome}*.\n\nStrike: ${strikes}\n🚫 Links são proibidos sem autorização.\n\nPor favor, apaga.\nCom 3 strikes a moderação toma providências.`
+    to,
+    body
   });
 
   const options = {
     method: "POST",
     hostname: "api.ultramsg.com",
-    path: `/${INSTANCE}/messages/chat`,
+    path: `/${INSTANCE}/messages/chat?token=${TOKEN}`,
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
-      "Content-Length": msgPrivada.length
+      "Content-Length": message.length
     }
   };
 
-  const req = http.request(options, res => {
-    let data = "";
-    res.on("data", chunk => data += chunk);
-    res.on("end", () => console.log("📤 Aviso PRIVADO enviado:", data));
-  });
-
-  req.write(msgPrivada);
-  req.end();
-} catch (err) {
-  console.error("❌ Erro ao mandar no privado:", err.message);
-}
-
-const options1 = {
-  method: "POST",
-  hostname: "api.ultramsg.com",
-  path: `/${INSTANCE}/messages/chat?token=${TOKEN}`, // ✅ AGORA VAI, PORRA!
-  headers: {
-    "Content-Type": "application/x-www-form-urlencoded",
-    "Content-Length": avisoInstantaneo.length
-  }
-};
-
-  const req1 = http.request(options1, res => {
-    let data = "";
-    res.on("data", chunk => data += chunk);
-    res.on("end", () => console.log("📤 Aviso imediato enviado:", data));
-  });
-
-  req1.write(avisoInstantaneo);
-  req1.end();
-} catch (err) {
-  console.error("❌ Erro ao enviar aviso imediato:", err.message);
-}
-
-// AGENDAR AVISO CORPORATIVO APÓS 1 MINUTO
-setTimeout(() => {
-  try {
-    const avisoCorporativo = qs.stringify({
-      token: TOKEN,
-      to: data.from,
-      body: `📢 Aviso automático:\n\n🔗 Links não são permitidos sem consulta prévia.\n👥 Respeite os membros e as diretrizes do grupo.\n🚨 Reincidência pode resultar em expulsão.\n\nObrigado por colaborar com a organização deste espaço.`
-    });
-
-    const options2 = {
-      method: "POST",
-      hostname: "api.ultramsg.com",
-      path: `/${INSTANCE}/messages/chat?token=${TOKEN}`,
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        "Content-Length": avisoCorporativo.length
-      }
-    };
-
-    const req2 = http.request(options2, res => {
+  return new Promise((resolve, reject) => {
+    const req = http.request(options, res => {
       let data = "";
       res.on("data", chunk => data += chunk);
-      res.on("end", () => console.log("📤 Aviso corporativo enviado:", data));
+      res.on("end", () => {
+        logger.info(`Message sent to ${to}:`, data);
+        resolve(data);
+      });
     });
 
-    req2.write(avisoCorporativo);
-    req2.end();
-  } catch (err) {
-    console.error("❌ Erro ao enviar aviso corporativo:", err.message);
-  }
-}, 60000); // 60 segundos
-  
-  console.log("✅ Mensagem limpa:", msg);
+    req.on("error", error => {
+      logger.error("Error sending message:", error);
+      reject(error);
+    });
 
-  res.sendStatus(200);
+    req.write(message);
+    req.end();
+  });
+}
+
+// Função para processar comandos
+async function processCommand(command, args, author, group) {
+  if (!config.commands.list.some(cmd => cmd.name === command)) {
+    return "Comando não reconhecido. Use /help para ver a lista de comandos.";
+  }
+
+  const cmdConfig = config.commands.list.find(cmd => cmd.name === command);
+  
+  if (cmdConfig.admin_only && !config.admins.includes(author)) {
+    return "Você não tem permissão para usar este comando.";
+  }
+
+  switch (command) {
+    case "strikes":
+      if (!args[0]) return "Uso: /strikes @usuario";
+      const userId = args[0].replace("@", "") + "@c.us";
+      const strikes = await db.getStrikes(userId);
+      return `Strikes de ${args[0]}: ${strikes}`;
+
+    case "reset":
+      if (!args[0]) return "Uso: /reset @usuario";
+      const resetUserId = args[0].replace("@", "") + "@c.us";
+      await db.resetStrikes(resetUserId);
+      await db.logModeration("reset", resetUserId, author, "Strikes resetados");
+      return `Strikes de ${args[0]} resetados com sucesso.`;
+
+    case "ban":
+      if (!args[0]) return "Uso: /ban @usuario [motivo]";
+      const banUserId = args[0].replace("@", "") + "@c.us";
+      const reason = args.slice(1).join(" ") || "Violação das regras do grupo";
+      await db.banUser(banUserId, reason, author);
+      
+      // Envia mensagem de banimento
+      const banMessage = config.moderation.ban_message
+        .replace("{user}", args[0])
+        .replace("{reason}", reason);
+      
+      await sendMessage(group, banMessage);
+      return `Usuário ${args[0]} banido com sucesso.`;
+
+    case "warn":
+      if (!args[0]) return "Uso: /warn @usuario [motivo]";
+      const warnUserId = args[0].replace("@", "") + "@c.us";
+      const warnReason = args.slice(1).join(" ") || "Aviso geral";
+      await db.addStrike(warnUserId);
+      await db.logModeration("warn", warnUserId, author, warnReason);
+      
+      const strikesCount = await db.getStrikes(warnUserId);
+      const warnMessage = config.moderation.warning_messages.private
+        .replace("{user}", args[0])
+        .replace("{group_name}", config.groups[group] || "este grupo")
+        .replace("{strikes}", strikesCount);
+      
+      await sendMessage(warnUserId, warnMessage);
+      return `Aviso enviado para ${args[0]}.`;
+
+    case "help":
+      const helpMessage = config.commands.list
+        .filter(cmd => !cmd.admin_only || config.admins.includes(author))
+        .map(cmd => `*${cmd.usage}* - ${cmd.description}`)
+        .join("\n");
+      return `📋 *Comandos Disponíveis:*\n\n${helpMessage}`;
+
+    default:
+      return "Comando não implementado.";
+  }
+}
+
+app.get("/", (req, res) => {
+  res.status(200).send("Bot tá vivo e rodando, caralho!");
+});
+
+app.post("/webhook", async (req, res) => {
+  try {
+    logger.info("Mensagem recebida:", req.body);
+
+    const data = req.body?.data;
+    if (!data) return res.sendStatus(200);
+
+    // Verifica se o usuário está banido
+    if (await db.isBanned(data.author)) {
+      logger.info(`Mensagem de usuário banido ignorada: ${data.author}`);
+      return res.sendStatus(200);
+    }
+
+    // Processa comandos
+    if (data.body.startsWith(config.commands.prefix)) {
+      const [command, ...args] = data.body.slice(1).split(" ");
+      const response = await processCommand(command, args, data.author, data.from);
+      await sendMessage(data.from, response);
+      return res.sendStatus(200);
+    }
+
+    // Boas-vindas quando evento for de entrada
+    if (req.body.event_type === "message_create" && data.type === "chat" && data.fromMe === false && data.body === "") {
+      const novoMembro = data.author;
+      const grupo = data.from;
+
+      const boasVindas = config.bot.welcome_message
+        .replace("{user}", novoMembro.replace("@c.us", ""))
+        .replace("{bot_name}", config.bot.name);
+
+      await sendMessage(grupo, boasVindas);
+      return res.sendStatus(200);
+    }
+
+    if (!data.body) return res.sendStatus(200);
+
+    const msg = data.body.toLowerCase();
+    const grupo = data.to;
+    const autor = data.from;
+
+    if (config.admins.includes(autor)) {
+      logger.info("Mensagem de admin ignorada:", autor);
+      return res.sendStatus(200);
+    }
+
+    const regex = new RegExp(config.moderation.link_regex, "i");
+
+    if (regex.test(msg)) {
+      logger.info("Link detectado:", { autor, msg });
+      
+      // Atualiza contador no banco de dados
+      await db.addStrike(data.author);
+      const strikes = await db.getStrikes(data.author);
+
+      logger.info(`Strike ${strikes} registrado para ${data.author}`);
+
+      // Apagar a mensagem original
+      try {
+        await axios.get(`https://api.ultramsg.com/${INSTANCE}/messages/delete`, {
+          params: {
+            token: TOKEN,
+            id: data.id
+          }
+        });
+        logger.info("Mensagem deletada:", data.id);
+      } catch (err) {
+        logger.error("Erro ao deletar:", err);
+      }
+
+      // Verifica se deve banir
+      if (strikes >= config.moderation.max_strikes) {
+        await db.banUser(data.author, "Excesso de links", "system");
+        const banMessage = config.moderation.ban_message
+          .replace("{user}", data.author.replace("@c.us", ""))
+          .replace("{reason}", "Excesso de links");
+        await sendMessage(grupo, banMessage);
+        return res.sendStatus(200);
+      }
+
+      // AVISO IMEDIATO
+      try {
+        const numero = data.author.replace("@c.us", "");
+        const grupoNome = config.groups[data.from] || "um dos grupos da comunidade";
+        
+        const avisoInstantaneo = config.moderation.warning_messages.immediate
+          .replace("{user}", numero)
+          .replace("{strikes}", strikes);
+
+        await sendMessage(data.author, avisoInstantaneo);
+
+        // AVISO PRIVADO
+        const msgPrivada = config.moderation.warning_messages.private
+          .replace("{user}", numero)
+          .replace("{group_name}", grupoNome)
+          .replace("{strikes}", strikes);
+
+        await sendMessage(data.author, msgPrivada);
+
+        // AGENDAR AVISO CORPORATIVO APÓS 1 MINUTO
+        setTimeout(async () => {
+          try {
+            await sendMessage(data.from, config.moderation.warning_messages.corporate);
+          } catch (err) {
+            logger.error("Erro ao enviar aviso corporativo:", err);
+          }
+        }, 60000);
+      } catch (err) {
+        logger.error("Erro ao enviar avisos:", err);
+      }
+    }
+
+    logger.info("Mensagem processada:", msg);
+    res.sendStatus(200);
+  } catch (error) {
+    logger.error("Erro no webhook:", error);
+    res.status(500).send("Internal Server Error");
   }
 });
 
-app.listen(3000, "0.0.0.0", () => {
-  console.log("BOT ok");
+// Graceful shutdown
+process.on('SIGINT', () => {
+  logger.info('Shutting down...');
+  db.close();
+  process.exit(0);
+});
+
+app.listen(PORT, "0.0.0.0", () => {
+  logger.info(`Bot rodando na porta ${PORT}`);
 });

@@ -1,0 +1,70 @@
+# Configurações do Bot
+bot:
+  name: "BotZap"
+  welcome_message: "👋 Olá {user}! Bem-vindo(a) ao grupo! Eu sou o {bot_name}, seu assistente de moderação. Por favor, leia as regras do grupo e evite enviar links não autorizados."
+
+# Configurações de Moderação
+moderation:
+  max_strikes: 3
+  link_regex: "(https?://[^\\s]+)"
+  warning_messages:
+    immediate: "⚠️ *ATENÇÃO*: Links não são permitidos neste grupo. Esta é sua {strikes}ª advertência."
+    private: "⚠️ *AVISO IMPORTANTE*: Olá {user}, você foi advertido por enviar links no grupo {group_name}. Esta é sua {strikes}ª advertência. Após 3 advertências, você será banido automaticamente."
+    corporate: "📢 *AVISO CORPORATIVO*: Por favor, evitem enviar links no grupo. Links não autorizados serão removidos e os usuários advertidos. Após 3 advertências, o usuário será banido automaticamente."
+  ban_message: "🚫 O usuário {user} foi banido do grupo por {reason}."
+
+# Comandos de Moderação
+commands:
+  prefix: "/"
+  list:
+    - name: "strikes"
+      usage: "/strikes @usuario"
+      description: "Verifica quantos strikes um usuário tem"
+      admin_only: true
+    - name: "reset"
+      usage: "/reset @usuario"
+      description: "Reseta os strikes de um usuário"
+      admin_only: true
+    - name: "ban"
+      usage: "/ban @usuario [motivo]"
+      description: "Bane um usuário do grupo"
+      admin_only: true
+    - name: "warn"
+      usage: "/warn @usuario [motivo]"
+      description: "Adverte um usuário"
+      admin_only: true
+    - name: "help"
+      usage: "/help"
+      description: "Mostra todos os comandos disponíveis"
+      admin_only: false
+
+# Grupos e Administradores
+groups:
+  "GCnIKziZAT2Etf0gshqA9S@g.us": "Grupo Principal"
+  "HacDHmPKghjJfiWUo2vw9u@g.us": "Grupo Secundário"
+  "COf6qGHjn27Ca9XyN3Mfh9@g.us": "Grupo Secundário2"
+
+admins:
+  - "5562983231110@c.us"
+  - "5562996604044@c.us"
+  - "5564992660522@c.us"
+
+# Configurações de Rate Limiting
+rate_limit:
+  window_ms: 60000  # 1 minuto
+  max_requests: 100  # máximo de requisições por minuto
+
+# Configurações do Banco de Dados
+database:
+  path: "bot.db"
+  backup:
+    enabled: true
+    interval: 86400  # 24 horas em segundos
+    path: "backups"
+
+# Configurações de Logs
+logging:
+  level: "info"
+  file: "bot.log"
+  max_size: 10485760  # 10MB
+  max_files: 5 
