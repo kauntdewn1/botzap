@@ -19,7 +19,47 @@ const INSTANCE = process.env.INSTANCE;
 app.get("/", (req, res) => {
   res.status(200).send("Bot tá vivo e rodando, caralho!");
 });
+app.post("/webhook", async (req, res) => {
+  const data = req.body?.data;
 
+  if (!data) return res.sendStatus(200);
+
+  // Boas-vindas quando evento for de entrada
+  if (req.body.event_type === "message_create" && data.type === "chat" && data.fromMe === false && data.body === "") {
+    const novoMembro = data.author;
+    const grupo = data.from;
+
+    const boasVindas = qs.stringify({
+      token: TOKEN,
+      to: grupo,
+      body: `👋 Olá @${novoMembro.replace("@c.us", "")}! 👋 E aí, bem-vindx à FlowHUB!\n\nEu sou a Ariel, seu suporte aqui no grupo — e tô aqui pra te ajudar a tirar o máximo desse ecossistema digital 🌐\n\n👉 Conheça nosso portal: www.flowhub.space\n📥 Baixe os templates gratuitos e comece hoje mesmo\n\nGrupos da Comunidade FLOWHUB:\n🧠 *Flow Growth* → Crescimento, ferramentas e estratégias\n💬 *Digital Flow Network* → Networking, colaborações e negócios\n\nSe apresenta aí e conta o que você faz!\nTamo junto pra crescer. 🙌`
+    });
+
+    const options = {
+      method: "POST",
+      hostname: "api.ultramsg.com",
+      path: `/${INSTANCE}/messages/chat`,
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Content-Length": boasVindas.length
+      }
+    };
+
+    const reqWelcome = http.request(options, res => {
+      let data = "";
+      res.on("data", chunk => data += chunk);
+      res.on("end", () => console.log("🙌 Boas-vindas enviadas:", data));
+    });
+
+    reqWelcome.write(boasVindas);
+    reqWelcome.end();
+
+    return res.sendStatus(200);
+  }
+
+  // Resto do bot...
+});
+  
 app.post("/webhook", async (req, res) => {
   console.log("📩 Mensagem recebida:", JSON.stringify(req.body, null, 2));
 
@@ -73,7 +113,7 @@ app.post("/webhook", async (req, res) => {
 try {
   const avisoInstantaneo = qs.stringify({
     token: TOKEN,
-    to: data.from,
+    to: data.author,
     body: `@${nomeDoCorno} 👀 Opa... detectei um link aqui.\nStrike: ${strikes}\n...\n\nApaga por favor. Quando chegar em 3, o grupo decide tua vida.`
   });
 // STRIKES
