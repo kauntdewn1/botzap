@@ -1,22 +1,11 @@
-FROM node:18-slim
+FROM node:18
 
 WORKDIR /app
 
-# Instala dependências necessárias
-RUN apt-get update && apt-get install -y \
-    python3 \
-    make \
-    g++ \
-    sqlite3 \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copia os arquivos de dependência
 COPY package*.json ./
 
-# Instala as dependências
-RUN npm install --production
+RUN npm install
 
-# Copia o resto do código
 COPY . .
 
 EXPOSE 3000
