@@ -1,14 +1,22 @@
-FROM node:18-alpine
+FROM node:18-slim
 
 WORKDIR /app
 
-# Instala dependências nativas necessárias para o sqlite3
-RUN apk add --no-cache python3 make g++ sqlite
+# Instala dependências necessárias
+RUN apt-get update && apt-get install -y \
+    python3 \
+    make \
+    g++ \
+    sqlite3 \
+    && rm -rf /var/lib/apt/lists/*
 
+# Copia os arquivos de dependência
 COPY package*.json ./
 
-RUN npm install
+# Instala as dependências
+RUN npm install --production
 
+# Copia o resto do código
 COPY . .
 
 EXPOSE 3000
