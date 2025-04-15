@@ -41,12 +41,10 @@ const INSTANCE = process.env.INSTANCE;
 const PORT = process.env.PORT || 3000;
 
 // Configura rate limiting
-const limiter = rateLimit({
-  windowMs: config.rate_limit.window_ms,
-  max: config.rate_limit.max_requests,
-  message: "Too many requests, please try again later."
-});
-app.use(limiter);
+app.use(rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 100 // limite de 100 requisições por janela
+}));
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -149,23 +147,32 @@ async function processCommand(command, args, author, group) {
       return `Aviso enviado para ${args[0]}.`;
 
     case "help":
-      const helpMessage = config.commands.list
-        .filter(cmd => !cmd.admin_only || config.admins.includes(author))
-        .map(cmd => `*${cmd.usage}* - ${cmd.description}`)
-        .join("\n");
-      return `📋 *Comandos Disponíveis:*\n\n${helpMessage}`;
+      logger.info("Comando help solicitado por:", author);
+      let helpMessage = "🤖 *Comandos Disponíveis*\n\n";
+      config.commands.list.forEach(cmd => {
+        if (!cmd.admin_only || config.admins.includes(author)) {
+          helpMessage += `*${cmd.usage}*\n${cmd.description}\n\n`;
+        }
+      });
+      await sendMessage(group, helpMessage);
+      break;
 
     default:
       return "Comando não implementado.";
   }
 }
 
+// Rota de verificação de status
 app.get("/", (req, res) => {
-  res.status(200).send("Bot tá vivo e rodando, caralho!");
+  res.status(200).send("BOT RODANDO NA PISTA, CHEIO DE ÓDIO!");
 });
 
 app.post("/webhook", async (req, res) => {
   try {
+    logger.info("Webhook recebido:", JSON.stringify(req.body));
+    
+    const { from, body, type, sender } = req.body;
+
     logger.info("Mensagem recebida:", req.body);
 
     const data = req.body?.data;
