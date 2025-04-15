@@ -172,8 +172,20 @@ app.post("/webhook", async (req, res) => {
     logger.info("Webhook recebido:", JSON.stringify(req.body));
     
     const { from, body, type, sender } = req.body;
+    logger.info("Detalhes da mensagem:", {
+      from,
+      body,
+      type,
+      sender,
+      isGroup: from.endsWith('@g.us'),
+      isCommand: body?.startsWith(config.commands.prefix)
+    });
 
-    logger.info("Mensagem recebida:", req.body);
+    // Verifica se é um grupo monitorado
+    if (from.endsWith('@g.us') && !config.groups[from]) {
+      logger.info("Mensagem ignorada - grupo não monitorado:", from);
+      return res.sendStatus(200);
+    }
 
     const data = req.body?.data;
     if (!data) return res.sendStatus(200);
@@ -185,10 +197,13 @@ app.post("/webhook", async (req, res) => {
     }
 
     // Processa comandos
-    if (data.body.startsWith(config.commands.prefix)) {
+    if (data.body?.startsWith(config.commands.prefix)) {
+      logger.info("Comando detectado:", data.body);
       const [command, ...args] = data.body.slice(1).split(" ");
       const response = await processCommand(command, args, data.author, data.from);
-      await sendMessage(data.from, response);
+      if (response) {
+        await sendMessage(data.from, response);
+      }
       return res.sendStatus(200);
     }
 
