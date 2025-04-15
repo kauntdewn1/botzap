@@ -7,18 +7,16 @@
     "start": "node bot.js"
   },
   "dependencies": {
-    "express": "^4.18.2",
-    "body-parser": "^1.20.2",
-    "axios": "^1.6.2",
-    "querystring": "^0.2.1",
-    "https": "^1.0.0",
-    "express-rate-limit": "^7.1.5",
-    "yaml": "^2.3.4",
-    "fs": "^0.0.1-security",
-    "winston": "^3.11.0",
-    "dotenv": "^16.3.1"
+    "express": "4.18.2",
+    "body-parser": "1.20.2",
+    "axios": "1.6.2",
+    "querystring": "0.2.1",
+    "express-rate-limit": "7.1.5",
+    "yaml": "2.3.4",
+    "winston": "3.11.0",
+    "dotenv": "16.3.1"
   },
   "engines": {
-    "node": ">=14.0.0"
+    "node": "18.x"
   }
 }
